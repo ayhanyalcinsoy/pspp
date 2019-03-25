@@ -33,9 +33,16 @@
 #define _(msgid) gettext (msgid)
 #define N_(msgid) msgid
 
+#define     POSTHOC_BONFERRONI  0x01
+#define     POSTHOC_GH          0x02
+#define     POSTHOC_LSD         0x03
+#define     POSTHOC_SCHEFFE     0x04
+#define     POSTHOC_SIDAK       0x05
+#define     POSTHOC_TUKEY       0x06
 
 static void next (GtkWidget *widget, PsppireDialogActionOneway *);
 static void prev (GtkWidget *widget, PsppireDialogActionOneway *);
+static void run_posthoc_dialog (PsppireDialogActionOneway *ow);
 static void run_contrasts_dialog (PsppireDialogActionOneway *csd);
 static void push_new_store (GArray *contrast_stack, PsppireDialogActionOneway *csd);
 
@@ -55,6 +62,12 @@ generate_syntax (const PsppireDialogAction *act)
 
   gboolean descriptives = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (ow->descriptives));
   gboolean homogeneity = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (ow->homogeneity));
+  gboolean bonferroni = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (ow->bonferroni_button));
+  gboolean gh = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (ow->gh_button));
+  gboolean lsd = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (ow->lsd_button));
+  gboolean scheffe = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (ow->scheffe_button));
+  gboolean sidak = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (ow->sidak_button));
+  gboolean tukey = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (ow->tukey_button));
   struct string dss;
 
   ds_init_cstr (&dss, "ONEWAY /VARIABLES=");
@@ -64,14 +77,26 @@ generate_syntax (const PsppireDialogAction *act)
   ds_put_cstr (&dss, " BY ");
 
   ds_put_cstr (&dss, gtk_entry_get_text (GTK_ENTRY (ow->factor_entry)));
-
-  if (descriptives || homogeneity )
+ 
+  if (descriptives || homogeneity || bonferroni || gh || lsd || scheffe || sidak || tukey)
     {
       ds_put_cstr (&dss, "\n\t/STATISTICS=");
       if (descriptives)
 	ds_put_cstr (&dss, "DESCRIPTIVES ");
       if (homogeneity)
 	ds_put_cstr (&dss, "HOMOGENEITY ");
+      if (bonferroni)
+	ds_put_cstr (&dss, "\n\t/POSTHOC=BONFERRONI ");
+      if (gh)
+	ds_put_cstr (&dss, "\n\t/POSTHOC=GH ");
+      if (lsd)
+	ds_put_cstr (&dss, "\n\t/POSTHOC=LSD ");
+      if (scheffe)
+	ds_put_cstr (&dss, "\n\t/POSTHOC=SCHEFFE ");
+      if (sidak)
+	ds_put_cstr (&dss, "\n\t/POSTHOC=SIDAK ");
+      if (tukey)
+	ds_put_cstr (&dss, "\n\t/POSTHOC=TUKEY ");
     }
 
   for (i = 0 ; i < ow->contrasts_array->len ; ++i )
@@ -226,8 +251,9 @@ psppire_dialog_action_oneway_activate (PsppireDialogAction *a, GVariant *param)
 
   GtkBuilder *xml = builder_new ( "oneway.ui");
 
-  GtkWidget *contrasts_button =
-    get_widget_assert (xml, "contrasts-button");
+  GtkWidget *contrasts_button = get_widget_assert (xml, "contrasts-button");
+/*Posthoc button */
+  GtkWidget *posthoc_button= get_widget_assert (xml, "posthoc-button");
   GtkEntry *entry = GTK_ENTRY (get_widget_assert (xml, "entry1"));
 
   pda->dialog = get_widget_assert   (xml, "oneway-anova-dialog");
@@ -239,6 +265,20 @@ psppire_dialog_action_oneway_activate (PsppireDialogAction *a, GVariant *param)
   act->descriptives =  get_widget_assert (xml, "checkbutton1");
   act->homogeneity =  get_widget_assert (xml, "checkbutton2");
 
+/*Posthoc tests dialog */
+  act->posthoc_dialog = get_widget_assert (xml, "posthoc-dialog");
+
+  act->bonferroni_button = get_widget_assert (xml, "bonferroni-button");
+  act->gh_button = get_widget_assert (xml, "gh-button");
+  act->lsd_button = get_widget_assert (xml, "lsd-button");
+  act->scheffe_button = get_widget_assert (xml, "scheffe-button");
+  act->sidak_button = get_widget_assert (xml, "sidak-button");
+  act->tukey_button = get_widget_assert (xml, "tukey-button");
+
+  g_signal_connect_swapped (posthoc_button, "clicked",
+		    G_CALLBACK (run_posthoc_dialog), act);
+
+/*Contrast dialog*/
   act->contrasts_dialog = get_widget_assert (xml, "contrasts-dialog");
 
   act->next = get_widget_assert (xml, "next-button");
@@ -282,9 +322,54 @@ psppire_dialog_action_oneway_init (PsppireDialogActionOneway *act)
   act->c = -1;
 
 }
+/*Posthoc dialog */
+static void
+run_posthoc_dialog (PsppireDialogActionOneway *ow)
+{
+  gint response;
 
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (ow->bonferroni_button),
+				ow->posthoc & POSTHOC_BONFERRONI);
 
-
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (ow->gh_button),
+				ow->posthoc & POSTHOC_GH);
+
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (ow->lsd_button),
+				ow->posthoc & POSTHOC_LSD);
+
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (ow->scheffe_button),
+				ow->posthoc & POSTHOC_SCHEFFE);
+
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (ow->sidak_button),
+				ow->posthoc & POSTHOC_SIDAK);
+
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (ow->tukey_button),
+				ow->posthoc & POSTHOC_TUKEY);
+
+  response = psppire_dialog_run (PSPPIRE_DIALOG (ow->posthoc_dialog));
+
+  if ( response == PSPPIRE_RESPONSE_CONTINUE )
+    {
+      ow->posthoc= 0;
+      if ( gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (ow->bonferroni_button) ))
+	ow->posthoc |= POSTHOC_BONFERRONI;
+
+      if ( gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (ow->gh_button) ))
+	ow->posthoc |= POSTHOC_GH;
+
+      if ( gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (ow->lsd_button) ))
+	ow->posthoc |= POSTHOC_LSD;
+
+      if ( gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (ow->scheffe_button) ))
+	ow->posthoc |= POSTHOC_SCHEFFE;
+
+      if ( gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (ow->sidak_button) ))
+	ow->posthoc |= POSTHOC_SIDAK;
+
+      if ( gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (ow->tukey_button) ))
+	ow->posthoc |= POSTHOC_TUKEY;
+    }
+}
 
 static void
 run_contrasts_dialog (PsppireDialogActionOneway *csd)
