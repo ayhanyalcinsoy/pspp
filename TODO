@@ -1,0 +1,3 @@
+1- Add plot options to EXAMINE gui.(/PLOT={BOXPLOT, NPPLOT, HISTOGRAM, SPREADLEVEL[(t)], ALL, NONE})
+
+2- Add colineary stats to Linear regression gui. (/STATISTICS COEFF OUTS R ANOVA COLLIN(renamed as TOL) )
