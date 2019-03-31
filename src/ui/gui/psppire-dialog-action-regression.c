@@ -42,7 +42,7 @@
   RG (R,     N_("R"),              N_("Show the correlation between observed and predicted values")) \
   RG (ANOVA, N_("Anova"),          N_("Show the analysis of variance table"))  \
   RG (BCOV,  N_("Bcov"),           N_("Show the variance coefficient matrix"))  \
-  RG (TOL,   N_("Tol"),            N_("Show variance inflation factor and its reciprocal"))
+  RG (TOL,   N_("Tol"),            N_("Show the variance inflation factor and its reciprocal"))
 
 enum
   {
